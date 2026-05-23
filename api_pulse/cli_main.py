@@ -1,4 +1,4 @@
-"""Unified entry-point that wires all sub-command groups together."""
+"""Main CLI entry-point — registers all sub-command parsers."""
 
 from __future__ import annotations
 
@@ -12,32 +12,33 @@ from api_pulse.cli_notify import build_notify_parser
 from api_pulse.cli_history import build_history_parser
 from api_pulse.cli_summary import build_summary_parser
 from api_pulse.cli_retention import build_retention_parser
+from api_pulse.cli_anomaly import build_anomaly_parser
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="api-pulse",
-        description="Minimal uptime monitor for REST endpoints.",
+        description="Minimal REST-endpoint uptime monitor",
     )
-    sub = parser.add_subparsers(dest="command")
+    sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
     # Core commands
-    p_add = sub.add_parser("add", help="Register a new endpoint")
-    p_add.add_argument("url", help="Endpoint URL")
-    p_add.add_argument("--name", default="", help="Human-readable name")
-    p_add.add_argument("--interval", type=int, default=60)
-    p_add.set_defaults(func=cmd_add)
+    add_p = sub.add_parser("add", help="Register a new endpoint")
+    add_p.add_argument("url")
+    add_p.add_argument("--name", default="")
+    add_p.add_argument("--interval", type=int, default=60)
+    add_p.set_defaults(func=cmd_add)
 
-    p_list = sub.add_parser("list", help="List registered endpoints")
-    p_list.set_defaults(func=cmd_list)
+    list_p = sub.add_parser("list", help="List registered endpoints")
+    list_p.set_defaults(func=cmd_list)
 
-    p_report = sub.add_parser("report", help="Show latency report")
-    p_report.add_argument("--url", default="")
-    p_report.set_defaults(func=cmd_report)
+    report_p = sub.add_parser("report", help="Show latency report")
+    report_p.add_argument("--limit", type=int, default=20)
+    report_p.set_defaults(func=cmd_report)
 
-    p_start = sub.add_parser("start", help="Start the scheduler")
-    p_start.add_argument("--interval", type=int, default=60)
-    p_start.set_defaults(func=cmd_start)
+    start_p = sub.add_parser("start", help="Start the polling scheduler")
+    start_p.add_argument("--interval", type=int, default=None)
+    start_p.set_defaults(func=cmd_start)
 
     # Feature sub-command groups
     build_export_parser(sub)
@@ -46,18 +47,21 @@ def build_parser() -> argparse.ArgumentParser:
     build_history_parser(sub)
     build_summary_parser(sub)
     build_retention_parser(sub)
+    build_anomaly_parser(sub)
 
     return parser
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv=None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
+
     if not hasattr(args, "func"):
         parser.print_help()
         sys.exit(0)
+
     args.func(args)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
