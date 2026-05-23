@@ -36,6 +36,13 @@ class EndpointStats:
         )
 
 
+def _compute_latency_stats(latencies: List[float]):
+    """Return (avg, min, max) for a list of latency values, or (None, None, None) if empty."""
+    if not latencies:
+        return None, None, None
+    return sum(latencies) / len(latencies), min(latencies), max(latencies)
+
+
 def compute_stats(conn, url: str, name: str, limit: int = 50) -> EndpointStats:
     """Compute uptime and latency statistics for a single endpoint."""
     pings: List[PingResult] = get_recent_pings(conn, url, limit=limit)
@@ -51,9 +58,7 @@ def compute_stats(conn, url: str, name: str, limit: int = 50) -> EndpointStats:
     successes = [p for p in pings if p.success]
     latencies = [p.latency_ms for p in successes if p.latency_ms is not None]
 
-    avg_lat = sum(latencies) / len(latencies) if latencies else None
-    min_lat = min(latencies) if latencies else None
-    max_lat = max(latencies) if latencies else None
+    avg_lat, min_lat, max_lat = _compute_latency_stats(latencies)
 
     return EndpointStats(
         url=url,
