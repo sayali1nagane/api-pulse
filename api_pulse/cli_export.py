@@ -8,6 +8,22 @@ from api_pulse.db import db_session
 from api_pulse.exporter import export_pings_csv, export_stats_csv
 
 
+def _write_csv_output(csv_data: str, output: str, success_msg: str) -> None:
+    """Write CSV data to stdout or a file, then print a confirmation message.
+
+    Args:
+        csv_data: The CSV content to write.
+        output: Destination path, or '-' to write to stdout.
+        success_msg: Message printed after a successful file write.
+    """
+    if output == "-":
+        sys.stdout.write(csv_data)
+    else:
+        out_path = Path(output)
+        out_path.write_text(csv_data, encoding="utf-8")
+        print(success_msg)
+
+
 def cmd_export_pings(args: argparse.Namespace) -> None:
     """Export raw ping history to a CSV file."""
     with db_session() as conn:
@@ -17,12 +33,12 @@ def cmd_export_pings(args: argparse.Namespace) -> None:
             limit=args.limit,
         )
 
-    if args.output == "-":
-        sys.stdout.write(csv_data)
-    else:
-        out_path = Path(args.output)
-        out_path.write_text(csv_data, encoding="utf-8")
-        print(f"Ping history exported to {out_path} ({len(csv_data.splitlines()) - 1} rows).")
+    row_count = len(csv_data.splitlines()) - 1
+    _write_csv_output(
+        csv_data,
+        args.output,
+        f"Ping history exported to {args.output} ({row_count} rows).",
+    )
 
 
 def cmd_export_stats(args: argparse.Namespace) -> None:
@@ -30,12 +46,12 @@ def cmd_export_stats(args: argparse.Namespace) -> None:
     with db_session() as conn:
         csv_data = export_stats_csv(conn)
 
-    if args.output == "-":
-        sys.stdout.write(csv_data)
-    else:
-        out_path = Path(args.output)
-        out_path.write_text(csv_data, encoding="utf-8")
-        print(f"Stats exported to {out_path} ({len(csv_data.splitlines()) - 1} endpoints).")
+    endpoint_count = len(csv_data.splitlines()) - 1
+    _write_csv_output(
+        csv_data,
+        args.output,
+        f"Stats exported to {args.output} ({endpoint_count} endpoints).",
+    )
 
 
 def build_export_parser(subparsers) -> None:
